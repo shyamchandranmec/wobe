@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "332591387374",
+    "firebase_url": "https://wobeauth.firebaseio.com",
+    "project_id": "wobeauth",
+    "storage_bucket": "wobeauth.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:332591387374:android:303da018c3680b28",
+        "android_client_info": {
+          "package_name": "com.example.admin.wobeassignment"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "332591387374-8k5avl16rgnlnr1l6eemjgmt6m3le9cj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.admin.wobeassignment",
+            "certificate_hash": "62027f0b4d446ab1508fb9297d0149e5118a5194"
+          }
+        },
+        {
+          "client_id": "332591387374-9nrlf5v6m9adcks3opkht2n64ifnhhbi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-16mbCi-4FVJG0wVeL-mhmnwYpd5LHzw"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "332591387374-9nrlf5v6m9adcks3opkht2n64ifnhhbi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

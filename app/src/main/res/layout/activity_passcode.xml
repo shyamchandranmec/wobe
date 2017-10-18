@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/background_image"
+    android:orientation="vertical">
+
+    <ImageView
+        android:layout_width="@dimen/seventy_70dp"
+        android:layout_height="@dimen/seventy_70dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/thirty_30dp"
+        android:src="@drawable/app_icon_transperant" />
+
+    <TextView
+        android:id="@+id/tvPasscode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/margin_65dp"
+        android:textColor="@color/colorAccent"
+        android:textSize="@dimen/text_size_20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/to_login_to_app"
+        android:textColor="@color/white"
+        android:textSize="@dimen/text_size_12sp" />
+
+
+    <LinearLayout
+        android:id="@+id/llOtpLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/thirty_30dp"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/etOne"
+            android:layout_width="@dimen/fifty_50dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/colorAccent"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:paddingTop="@dimen/twenty_20dp"
+            android:textColor="@color/colorAccent" />
+
+
+        <EditText
+            android:id="@+id/etTwo"
+            android:layout_width="@dimen/fifty_50dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/colorAccent"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:paddingTop="@dimen/twenty_20dp"
+            android:textColor="@color/colorAccent" />
+
+
+        <EditText
+            android:id="@+id/etThree"
+            android:layout_width="@dimen/fifty_50dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/colorAccent"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:paddingTop="@dimen/twenty_20dp"
+            android:textColor="@color/colorAccent" />
+
+
+        <EditText
+            android:id="@+id/etFour"
+            android:layout_width="@dimen/fifty_50dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/colorAccent"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:paddingTop="@dimen/twenty_20dp"
+            android:textColor="@color/colorAccent" />
+    </LinearLayout>
+
+</LinearLayout>

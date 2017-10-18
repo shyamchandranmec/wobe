@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/twenty_20dp"
+    android:background="@drawable/dialog"
+    android:orientation="vertical"
+    android:paddingLeft="@dimen/twenty_20dp"
+    android:paddingRight="@dimen/twenty_20dp"
+    android:paddingTop="@dimen/ten_10dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginBottom="@dimen/thirty_30dp"
+        android:layout_marginTop="@dimen/ten_10dp"
+        android:text="@string/transaction_successful"
+        android:textColor="@color/colorPrimary"
+        android:textSize="@dimen/text_size_16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/success"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginBottom="@dimen/twenty_20dp"
+        android:text="@string/thumbs_up"
+        android:textColor="@color/colorPrimary"
+        android:textSize="@dimen/text_size_50sp" />
+
+    <Button
+        android:id="@+id/btnOk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginBottom="@dimen/ten_10dp"
+        android:layout_marginTop="@dimen/twenty_20dp"
+        android:background="@drawable/button_primary_color"
+        android:text="@string/ok"
+        android:textColor="@color/colorPrimary" />
+
+</LinearLayout>

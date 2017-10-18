@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/ivIconRegister"
+        android:layout_width="@dimen/seventy_70dp"
+        android:layout_height="@dimen/seventy_70dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="@dimen/fifty_50dp"
+        android:layout_marginTop="@dimen/fifty_50dp"
+        android:src="@drawable/app_icon_transperant" />
+
+    <LinearLayout
+        android:id="@+id/registerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/ivIconRegister"
+        android:layout_marginEnd="@dimen/fifty_50dp"
+        android:layout_marginLeft="@dimen/fifty_50dp"
+        android:layout_marginRight="@dimen/fifty_50dp"
+        android:layout_marginStart="@dimen/fifty_50dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/fifteen_15dp"
+            android:text="@string/register"
+            android:textColor="@color/colorAccent"
+            android:textSize="@dimen/text_size_20sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etFirstname"
+            style="@style/edit_text_style"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/first_name"
+            android:maxLength="50" />
+
+        <EditText
+            android:id="@+id/etLastname"
+            style="@style/edit_text_style"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/last_name"
+            android:maxLength="50" />
+
+        <EditText
+            android:id="@+id/etEmail"
+            style="@style/edit_text_style"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/email"
+            android:inputType="textEmailAddress"
+            android:maxLength="60" />
+
+        <EditText
+            android:id="@+id/etPassword"
+            style="@style/edit_text_style"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/password"
+            android:inputType="textPassword"
+            android:maxLength="50" />
+
+        <Button
+            android:id="@+id/btnRegister"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/twenty_20dp"
+            android:background="@drawable/button_accent_selector"
+            android:paddingEnd="@dimen/fifty_50dp"
+            android:paddingLeft="@dimen/fifty_50dp"
+            android:paddingRight="@dimen/fifty_50dp"
+            android:paddingStart="@dimen/fifty_50dp"
+            android:text="@string/register"
+            android:textColor="@color/colorAccent" />
+
+    </LinearLayout>
+
+</RelativeLayout>
