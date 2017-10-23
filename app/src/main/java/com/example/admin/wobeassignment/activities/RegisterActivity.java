@@ -378,21 +378,22 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                                     saveData(Constants.EMAIL, email);
                             SharedPreferenceManager.getInstance(RegisterActivity.this).
                                     saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-                            pushProfileToCleverTap(email, firstName, lastName);
+                            pushProfileToCleverTap(email, firstName, lastName, userModel.getCredits());
                             goToNextActivity(PasscodeActivity.class);
                         }
                     }
                 });
     }
 
-    private void pushProfileToCleverTap(String email, String firstName, String lastName) {
+    private void pushProfileToCleverTap(String email, String firstName, String lastName, float credits) {
         CleverTapAPI cleverTap;
         try {
             cleverTap = CleverTapAPI.getInstance(getApplicationContext());
             HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-            profileUpdate.put("email", "");                  // String
+            profileUpdate.put("email", email);                  // String
             profileUpdate.put("firstName", firstName);
             profileUpdate.put("lastName", lastName);
+            profileUpdate.put("credits", credits);
             cleverTap.profile.push(profileUpdate);
         } catch (CleverTapMetaDataNotFoundException e) {
             // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml

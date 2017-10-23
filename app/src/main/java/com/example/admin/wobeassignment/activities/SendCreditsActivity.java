@@ -107,11 +107,22 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         usersRef.child(AeSimpleSHA1.SHA1(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL))).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
+                CleverTapAPI cleverTap;
                 UserModel userModel = snapshot.getValue(UserModel.class);
                 SharedPreferenceManager.getInstance(SendCreditsActivity.this).
                         saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
                 tvBalance.setText(getResources().getString(R.string.balance) + SharedPreferenceManager.
                         getInstance(SendCreditsActivity.this).getString(Constants.CREDITS));
+                try {
+                    cleverTap = CleverTapAPI.getInstance(getApplicationContext());
+                    HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
+                    profileUpdate.put("credits", userModel.getCredits());
+                    cleverTap.profile.push(profileUpdate);
+                } catch (CleverTapMetaDataNotFoundException e) {
+                    // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
+                } catch (CleverTapPermissionsNotSatisfied e) {
+                    // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
+                }
             }
 
             @Override
@@ -195,7 +206,7 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         usersRef.child(emailHash).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
-                if(snapshot.hasChild("email")) {
+                if (snapshot.hasChild("email")) {
                     UserModel userModel = snapshot.getValue(UserModel.class);
                     toUserModel = userModel;
                     toCustomerId = userModel.getEmail();
@@ -310,7 +321,7 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         final DatabaseReference usersRef = ref.child("users");
         TransactionModel fromTransactionModel = new TransactionModel();
         TransactionModel toTransactionModel = new TransactionModel();
-        String tid = fromUserModel.getUserId() + "--"  + fromUserModel.getTransactions().size();
+        String tid = fromUserModel.getUserId() + "--" + fromUserModel.getTransactions().size();
         String timeStamp = new SimpleDateFormat("yyyy-MM-dd--HH:mm").format(Calendar.getInstance().getTime());
 
         fromTransactionModel.setTransactionId(tid);
@@ -333,11 +344,11 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         toTransactionModel.setTransactionDate(timeStamp);
         toTransactionModel.setCredits(amount);
         Map<String, Object> update = new HashMap<>();
-        toUserModel.setCredits(toUserModel.getCredits()+amount);
-        toUserModel.setReceived(toUserModel.getReceived()+amount);
+        toUserModel.setCredits(toUserModel.getCredits() + amount);
+        toUserModel.setReceived(toUserModel.getReceived() + amount);
         toUserModel.getTransactions().add(toTransactionModel);
-        fromUserModel.setCredits(fromUserModel.getCredits()-amount);
-        fromUserModel.setSent(fromUserModel.getSent()+amount);
+        fromUserModel.setCredits(fromUserModel.getCredits() - amount);
+        fromUserModel.setSent(fromUserModel.getSent() + amount);
         fromUserModel.getTransactions().add(fromTransactionModel);
         update.put(AeSimpleSHA1.SHA1(toCustomerId), toUserModel);
         update.put(AeSimpleSHA1.SHA1(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL)), fromUserModel);
@@ -356,8 +367,7 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
                         // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
                     }
                     showSuccessDialog();
-                }
-                else {
+                } else {
                     btnSendCredits.setEnabled(true);
                 }
 
@@ -365,6 +375,7 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         });
 
     }
+
     /*
        Method to show success dialog
     */

@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Response;
@@ -23,6 +24,8 @@ import com.example.admin.wobeassignment.ApplicationLoader;
 import com.example.admin.wobeassignment.R;
 import com.example.admin.wobeassignment.fragments.GoogleSignInFragment;
 import com.example.admin.wobeassignment.model.BaseModel;
+import com.example.admin.wobeassignment.model.UserModel;
+import com.example.admin.wobeassignment.utilities.AeSimpleSHA1;
 import com.example.admin.wobeassignment.utilities.CommonUtils;
 import com.example.admin.wobeassignment.utilities.Constants;
 import com.example.admin.wobeassignment.utilities.SharedPreferenceManager;
@@ -37,6 +40,11 @@ import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 
 import com.google.firebase.auth.AuthResult;
@@ -351,17 +359,40 @@ public class LoginActivity extends FragmentActivity implements View.OnClickListe
     }
 
     private void pushProfileToCleverTap(String email) {
-        CleverTapAPI cleverTap;
-        try {
-            cleverTap = CleverTapAPI.getInstance(getApplicationContext());
-            HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-            profileUpdate.put("email", email);
-            cleverTap.profile.push(profileUpdate);
-        } catch (CleverTapMetaDataNotFoundException e) {
-            // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
-        } catch (CleverTapPermissionsNotSatisfied e) {
-            // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
-        }
+        final FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference ref = database.getReference();
+        DatabaseReference usersRef = ref.child("users");
+        usersRef.child(AeSimpleSHA1.SHA1(email)).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                CleverTapAPI cleverTap;
+                UserModel userModel = snapshot.getValue(UserModel.class);
+                SharedPreferenceManager.getInstance(LoginActivity.this).
+                        saveData(Constants.FIRST_NAME, userModel.getFirstName());
+                SharedPreferenceManager.getInstance(LoginActivity.this).
+                        saveData(Constants.LAST_NAME, userModel.getLastName());
+                SharedPreferenceManager.getInstance(LoginActivity.this).
+                        saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
+                try {
+                    cleverTap = CleverTapAPI.getInstance(getApplicationContext());
+                    HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
+                    profileUpdate.put("email", userModel.getEmail());                  // String
+                    profileUpdate.put("firstName", userModel.getFirstName());
+                    profileUpdate.put("lastName", userModel.getLastName());
+                    profileUpdate.put("credits", userModel.getCredits());
+                    cleverTap.profile.push(profileUpdate);
+                } catch (CleverTapMetaDataNotFoundException e) {
+                    // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
+                } catch (CleverTapPermissionsNotSatisfied e) {
+                    // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                System.out.println("error");
+            }
+        });
     }
 
     /*
