@@ -1,8 +1,9 @@
 <resources>
     <string name="app_name">Wobe</string>
 
-    <string name="facebook_app_id">175734726326193</string>
-    <string name="fb_login_protocol_scheme">fb175734726326193</string>
+    <string name="facebook_app_id">1572886879421703</string>
+    <string name="fb_login_protocol_scheme">fb1572886879421703</string>
+
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>

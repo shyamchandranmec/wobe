@@ -29,17 +29,28 @@ import com.example.admin.wobeassignment.utilities.AeSimpleSHA1;
 import com.example.admin.wobeassignment.utilities.CommonUtils;
 import com.example.admin.wobeassignment.utilities.Constants;
 import com.example.admin.wobeassignment.utilities.SharedPreferenceManager;
+import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.GraphRequest;
 import com.facebook.GraphResponse;
+import com.facebook.appevents.AppEventsLogger;
 import com.facebook.internal.CallbackManagerImpl;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.gson.Gson;
@@ -65,7 +76,7 @@ import java.util.Map;
  * Created by Admin on 20-09-2017.
  */
 
-public class RegisterActivity extends FragmentActivity implements View.OnClickListener {
+public class RegisterActivity extends FragmentActivity implements View.OnClickListener, GoogleApiClient.OnConnectionFailedListener {
 
     private FragmentManager fragmentManager;
     private FragmentTransaction fragmentTransaction;
@@ -74,12 +85,24 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
     private Button fb, btnRegister;
     private EditText etFirstName, etLastName, etEmail, etPassword;
     private FirebaseAuth auth;
+    private  GoogleApiClient mGoogleApiClient;
+    private static int RC_SIGN_IN = 9001;
+    GoogleSignInAccount acct = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         FacebookSdk.sdkInitialize(this.getApplicationContext());
+        AppEventsLogger.activateApp(this);
         super.onCreate(savedInstanceState);
-
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .requestProfile()
+                .build();
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
         auth = FirebaseAuth.getInstance();
 
         setContentView(R.layout.activity_register);
@@ -96,79 +119,16 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
         fb.setOnClickListener(this);
 
         callbackManager = CallbackManager.Factory.create();
-        loginButton.setReadPermissions("email");
+        loginButton.setReadPermissions("email", "public_profile");
         loginButton.registerCallback(callbackManager,
                 new FacebookCallback<LoginResult>() {
                     @Override
                     public void onSuccess(LoginResult loginResult) {
                         Log.d("success", "Success");
-                        String accessToken = loginResult.getAccessToken()
+                        final String accessToken = loginResult.getAccessToken()
                                 .getToken();
                         Log.i("accessToken", accessToken);
-                        GraphRequest request = GraphRequest.newMeRequest(
-                                loginResult.getAccessToken(),
-                                new GraphRequest.GraphJSONObjectCallback() {
-                                    @Override
-                                    public void onCompleted(JSONObject object,
-                                                            GraphResponse response) {
-                                        Log.i("LoginActivity",
-                                                response.toString());
-                                        try {
-                                             /*
-                                               Name and Email is retrieved from Facebook success response
-                                            */
-                                            String name = object.getString("name");
-                                            String email = object.getString("email");
-                                            String facebookId = object.getString("id");
-
-                                            String firstName = null, lastName = null;
-
-                                              /*
-                                               Name is split to Firstname and Lastname
-                                            */
-                                            if (name != null) {
-                                                String[] parts = name.split("\\s+");
-                                                if (parts.length == 1) {
-                                                    firstName = parts[0];
-                                                    lastName = null;
-                                                } else if (parts.length == 2) {
-                                                    firstName = parts[0];
-                                                    lastName = parts[1];
-                                                }
-                                            }
-
-                                             /*
-                                              Firstname and Lastname saved in Shared Preference
-                                             */
-                                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                                    saveData(Constants.USERNAME, name);
-                                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                                    saveData(Constants.EMAIL, email);
-                                            if (facebookId != null && !facebookId.isEmpty() && name != null
-                                                    && !name.isEmpty() && email != null && !email.isEmpty()) {
-                                                 /*
-                                                   API call for Social Login
-                                                */
-                                                if (CommonUtils.isConnectingToInternet(RegisterActivity.this)) {
-                                                    makeApiCallForFacebookLogin(firstName, lastName,
-                                                            email, "123445555");
-                                                } else {
-                                                    Toast.makeText(RegisterActivity.this, getResources().
-                                                                    getString(R.string.check_internet_connection),
-                                                            Toast.LENGTH_SHORT).show();
-                                                }
-                                                facebookLogOut();
-                                            }
-                                        } catch (JSONException e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                });
-                        Bundle parameters = new Bundle();
-                        parameters.putString("fields",
-                                "id,name,email,gender, birthday");
-                        request.setParameters(parameters);
-                        request.executeAsync();
+                        handleFacebookAccessToken(loginResult.getAccessToken());
                     }
 
                     @Override
@@ -184,7 +144,80 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                 });
         initialiseViews();
     }
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
+    }
+    private void fetchDataFromFb(AccessToken token) {
+        if(token != null) {
+            GraphRequest request = GraphRequest.newMeRequest(
+                    token,
+                    new GraphRequest.GraphJSONObjectCallback() {
+                        @Override
+                        public void onCompleted(JSONObject object,
+                                                GraphResponse response) {
+                            Log.i("LoginActivity",
+                                    response.toString());
+                            try {
+                                             /*
+                                               Name and Email is retrieved from Facebook success response
+                                            */
+                                String name = object.getString("name");
+                                String email = object.getString("email");
+                                String facebookId = object.getString("id");
+
+                                String firstName = null, lastName = null;
+
+                                              /*
+                                               Name is split to Firstname and Lastname
+                                            */
+                                if (name != null) {
+                                    String[] parts = name.split("\\s+");
+                                    if (parts.length == 1) {
+                                        firstName = parts[0];
+                                        lastName = null;
+                                    } else if (parts.length == 2) {
+                                        firstName = parts[0];
+                                        lastName = parts[1];
+                                    }
+                                }
+
+                                             /*
+                                              Firstname and Lastname saved in Shared Preference
+                                             */
+                                SharedPreferenceManager.getInstance(RegisterActivity.this).
+                                        saveData(Constants.USERNAME, name);
+                                SharedPreferenceManager.getInstance(RegisterActivity.this).
+                                        saveData(Constants.EMAIL, email);
+                                if (facebookId != null && !facebookId.isEmpty() && name != null
+                                        && !name.isEmpty() && email != null && !email.isEmpty()) {
+                                                 /*
+                                                   API call for Social Login
+                                                */
+                                    if (CommonUtils.isConnectingToInternet(RegisterActivity.this)) {
+
+                                        makeApiCallForFacebookLogin(firstName, lastName,
+                                                email, facebookId);
+                                    } else {
+                                        Toast.makeText(RegisterActivity.this, getResources().
+                                                        getString(R.string.check_internet_connection),
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                    facebookLogOut();
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+            Bundle parameters = new Bundle();
+            parameters.putString("fields",
+                    "id,name,email,gender, birthday");
+            request.setParameters(parameters);
+            request.executeAsync();
+        }
+
+    }
     /*
       Method for Facebook Logout
     */
@@ -201,53 +234,96 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
       Request parameters - firstname, lastname, email, tokenid
       Successful response - customerid
     */
-    private void makeApiCallForFacebookLogin(final String firstName, final String lastName, String email, String tokenId) {
-        String url = String.format(Constants.SOCIAL_LOGIN_URL, firstName, lastName, email, tokenId);
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(url,
-                new Response.Listener<JSONObject>() {
+    private void handleFacebookAccessToken(final AccessToken token) {
+        Log.d("hi", "handleFacebookAccessToken:" + token);
+
+        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
+        auth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
-                    public void onResponse(JSONObject response) {
-                        try {
-                            if (response != null && response.getString("returnStatus").equalsIgnoreCase("SUCCESS")) {
-                                 /*
-                                  On success response from API, customerid, name and email is stored
-                                  in Shared Preference and taken to the Passcode Activity
-                                */
-                                BaseModel model = new Gson().fromJson
-                                        (response.toString(), BaseModel.class);
-                                String customerId = model.getCustomerID().toString();
-                                SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                        saveData(Constants.CUSTOMER_ID, customerId);
-                                SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                        saveData(Constants.FIRST_NAME, firstName);
-                                SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                        saveData(Constants.LAST_NAME, lastName);
-                                goToNextActivity(PasscodeActivity.class);
-                            }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d("hi", "signInWithCredential:success");
+                            FirebaseUser user = auth.getCurrentUser();
+                            fetchDataFromFb(token);
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w("hi", "signInWithCredential:failure", task.getException());
+                            Toast.makeText(RegisterActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+                            fetchDataFromFb(null);
                         }
+
+                        // ...
                     }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-            }
-        });
-        ApplicationLoader.getRequestQueue().add(jsonObjectRequest);
+                });
+    }
+
+    private void makeApiCallForFacebookLogin(final String firstName, final String lastName, String email, String tokenId) {
+        FirebaseUser user = auth.getCurrentUser();
+        String userId = tokenId;
+        UserModel userModel = new UserModel(firstName, lastName, email, userId + "fb", 10000, 0, 0, 10000, new ArrayList());
+        createNewUser(userModel);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         //Result code received from Facebook
-        if (resultCode == RESULT_OK) {
-            if (requestCode == CallbackManagerImpl.RequestCodeOffset.Login.toRequestCode()) {
-                callbackManager.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == RC_SIGN_IN) {
+            GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            handleSignInResult(result);
+        } else {
+            if (resultCode == RESULT_OK) {
+                if (requestCode == CallbackManagerImpl.RequestCodeOffset.Login.toRequestCode()) {
+                    callbackManager.onActivityResult(requestCode, resultCode, data);
+                }
             }
         }
+
+    }
+    private void firebaseAuthWithGoogle() {
+        Log.d("Google sign in", "firebaseAuthWithGoogle:" + acct.getId());
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        auth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d("google sign in", "signInWithCredential:success");
+                            FirebaseUser user = auth.getCurrentUser();
+                            String firstName = acct.getGivenName();
+                            String lastName = acct.getFamilyName();
+                            String email = acct.getEmail();
+                            String userId = acct.getId();
+                            UserModel userModel = new UserModel(firstName, lastName, email, userId, 10000, 0, 0, 10000, new ArrayList());
+                            createNewUser(userModel);
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w("Google sign in", "signInWithCredential:failure", task.getException());
+                            Toast.makeText(RegisterActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+                            createNewUser(null);
+                        }
+
+                        // ...
+                    }
+                });
     }
 
+    private void handleSignInResult(GoogleSignInResult result) {
+        Log.d("Google sign in", "handleSignInResult:" + result.isSuccess());
+        if (result.isSuccess()) {
+            // Signed in successfully, show authenticated UI.
+            acct = result.getSignInAccount();
+            firebaseAuthWithGoogle();
+        } else {
+            // Signed out, show unauthenticated UI.
+        }
+    }
     /*
     Method to initialise views
    */
@@ -312,12 +388,16 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
     /*
       Method to add fragment
     */
-    private void addFragment() {
+    /*private void addFragment() {
         fragmentManager = getSupportFragmentManager();
         fragmentTransaction = fragmentManager.beginTransaction();
         GoogleSignInFragment googleSignInFragment = new GoogleSignInFragment();
         fragmentTransaction.add(R.id.fragment_holder, googleSignInFragment, "GoogleSignIn");
         fragmentTransaction.commit();
+    }*/
+    private void signIn() {
+        Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+        startActivityForResult(signInIntent, RC_SIGN_IN);
     }
 
     /*
@@ -330,7 +410,7 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
             case R.id.btnGoogleSignUp:
                 FrameLayout frameLayout = (FrameLayout) findViewById(R.id.fragment_layout);
                 frameLayout.setVisibility(View.VISIBLE);
-                addFragment();
+                signIn();
                 break;
             case R.id.btnFacebookSignUp:
                 if (CommonUtils.isConnectingToInternet(RegisterActivity.this)) {
@@ -363,28 +443,31 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                         } else {
                             FirebaseUser user = auth.getCurrentUser();
                             String userId = user.getUid();
-                            final FirebaseDatabase database = FirebaseDatabase.getInstance();
-                            DatabaseReference ref = database.getReference();
-                            DatabaseReference usersRef = ref.child("users");
                             UserModel userModel = new UserModel(firstName, lastName, email, userId, 10000, 0, 0, 10000, new ArrayList());
-                            usersRef.child(AeSimpleSHA1.SHA1(email)).setValue(userModel);
-                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                    saveData(Constants.CUSTOMER_ID, userId);
-                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                    saveData(Constants.FIRST_NAME, firstName);
-                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                    saveData(Constants.LAST_NAME, lastName);
-                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                    saveData(Constants.EMAIL, email);
-                            SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                    saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-                            pushProfileToCleverTap(email, firstName, lastName, userModel.getCredits());
-                            goToNextActivity(PasscodeActivity.class);
+                            createNewUser(userModel);
                         }
                     }
                 });
     }
 
+    private void createNewUser(UserModel userModel) {
+        final FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference ref = database.getReference();
+        DatabaseReference usersRef = ref.child("users");
+        usersRef.child(AeSimpleSHA1.SHA1(userModel.getEmail())).setValue(userModel);
+        SharedPreferenceManager.getInstance(RegisterActivity.this).
+                saveData(Constants.CUSTOMER_ID, userModel.getUserId());
+        SharedPreferenceManager.getInstance(RegisterActivity.this).
+                saveData(Constants.FIRST_NAME, userModel.getFirstName());
+        SharedPreferenceManager.getInstance(RegisterActivity.this).
+                saveData(Constants.LAST_NAME, userModel.getLastName());
+        SharedPreferenceManager.getInstance(RegisterActivity.this).
+                saveData(Constants.EMAIL, userModel.getEmail());
+        SharedPreferenceManager.getInstance(RegisterActivity.this).
+                saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
+        pushProfileToCleverTap(userModel.getEmail(), userModel.getFirstName(), userModel.getLastName(), userModel.getCredits());
+        goToNextActivity(PasscodeActivity.class);
+    }
     private void pushProfileToCleverTap(String email, String firstName, String lastName, float credits) {
         CleverTapAPI cleverTap;
         try {
