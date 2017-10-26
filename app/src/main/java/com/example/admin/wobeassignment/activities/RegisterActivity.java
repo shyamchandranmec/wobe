@@ -22,6 +22,7 @@ import com.clevertap.android.sdk.exceptions.CleverTapPermissionsNotSatisfied;
 import com.example.admin.wobeassignment.ApplicationLoader;
 import com.example.admin.wobeassignment.R;
 import com.example.admin.wobeassignment.fragments.GoogleSignInFragment;
+import com.example.admin.wobeassignment.managers.AuthManager;
 import com.example.admin.wobeassignment.model.BaseModel;
 import com.example.admin.wobeassignment.model.TransactionModel;
 import com.example.admin.wobeassignment.model.UserModel;
@@ -87,12 +88,14 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
     private FirebaseAuth auth;
     private  GoogleApiClient mGoogleApiClient;
     private static int RC_SIGN_IN = 9001;
-    GoogleSignInAccount acct = null;
+    private GoogleSignInAccount acct = null;
+    private AuthManager authManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         FacebookSdk.sdkInitialize(this.getApplicationContext());
         AppEventsLogger.activateApp(this);
+        authManager = new AuthManager(this);
         super.onCreate(savedInstanceState);
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -104,16 +107,7 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
         auth = FirebaseAuth.getInstance();
-
         setContentView(R.layout.activity_register);
-
-         /*
-           Facebook Login integration.
-           Email permissions asked to use the customer email.
-           On successful facebook login, name and email is retrieved.
-           API call for Social Login is done, to save details in the server database.
-           Facebook Logout is done.
-         */
         fb = (Button) findViewById(R.id.btnFacebookSignUp);
         loginButton = (LoginButton) findViewById(R.id.login_button);
         fb.setOnClickListener(this);
@@ -128,7 +122,7 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                         final String accessToken = loginResult.getAccessToken()
                                 .getToken();
                         Log.i("accessToken", accessToken);
-                        handleFacebookAccessToken(loginResult.getAccessToken());
+                        authManager.handleFacebookAccessToken(loginResult.getAccessToken());
                     }
 
                     @Override
@@ -315,7 +309,7 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
     }
 
     private void handleSignInResult(GoogleSignInResult result) {
-        Log.d("Google sign in", "handleSignInResult:" + result.isSuccess());
+        Log.d("Google sign in", "handleGoogleSigninResult:" + result.isSuccess());
         if (result.isSuccess()) {
             // Signed in successfully, show authenticated UI.
             acct = result.getSignInAccount();

@@ -134,7 +134,7 @@ public class GoogleSignInFragment extends android.support.v4.app.Fragment implem
       Make Social Login API call
      */
     private void handleSignInResult(GoogleSignInResult result) {
-        Log.d(TAG, "handleSignInResult:" + result.isSuccess());
+        Log.d(TAG, "handleGoogleSigninResult:" + result.isSuccess());
         if (result.isSuccess()) {
             // Signed in successfully, show authenticated UI.
             GoogleSignInAccount acct = result.getSignInAccount();
