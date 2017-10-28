@@ -87,7 +87,6 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
     private EditText etFirstName, etLastName, etEmail, etPassword;
     private FirebaseAuth auth;
     private  GoogleApiClient mGoogleApiClient;
-    private static int RC_SIGN_IN = 9001;
     private GoogleSignInAccount acct = null;
     private AuthManager authManager;
 
@@ -127,7 +126,7 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
 
                     @Override
                     public void onCancel() {
-                        facebookLogOut();
+                        authManager.facebookLogOut();
                     }
 
                     @Override
@@ -142,132 +141,15 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
     }
-    private void fetchDataFromFb(AccessToken token) {
-        if(token != null) {
-            GraphRequest request = GraphRequest.newMeRequest(
-                    token,
-                    new GraphRequest.GraphJSONObjectCallback() {
-                        @Override
-                        public void onCompleted(JSONObject object,
-                                                GraphResponse response) {
-                            Log.i("LoginActivity",
-                                    response.toString());
-                            try {
-                                             /*
-                                               Name and Email is retrieved from Facebook success response
-                                            */
-                                String name = object.getString("name");
-                                String email = object.getString("email");
-                                String facebookId = object.getString("id");
 
-                                String firstName = null, lastName = null;
-
-                                              /*
-                                               Name is split to Firstname and Lastname
-                                            */
-                                if (name != null) {
-                                    String[] parts = name.split("\\s+");
-                                    if (parts.length == 1) {
-                                        firstName = parts[0];
-                                        lastName = null;
-                                    } else if (parts.length == 2) {
-                                        firstName = parts[0];
-                                        lastName = parts[1];
-                                    }
-                                }
-
-                                             /*
-                                              Firstname and Lastname saved in Shared Preference
-                                             */
-                                SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                        saveData(Constants.USERNAME, name);
-                                SharedPreferenceManager.getInstance(RegisterActivity.this).
-                                        saveData(Constants.EMAIL, email);
-                                if (facebookId != null && !facebookId.isEmpty() && name != null
-                                        && !name.isEmpty() && email != null && !email.isEmpty()) {
-                                                 /*
-                                                   API call for Social Login
-                                                */
-                                    if (CommonUtils.isConnectingToInternet(RegisterActivity.this)) {
-
-                                        makeApiCallForFacebookLogin(firstName, lastName,
-                                                email, facebookId);
-                                    } else {
-                                        Toast.makeText(RegisterActivity.this, getResources().
-                                                        getString(R.string.check_internet_connection),
-                                                Toast.LENGTH_SHORT).show();
-                                    }
-                                    facebookLogOut();
-                                }
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
-            Bundle parameters = new Bundle();
-            parameters.putString("fields",
-                    "id,name,email,gender, birthday");
-            request.setParameters(parameters);
-            request.executeAsync();
-        }
-
-    }
-    /*
-      Method for Facebook Logout
-    */
-    private void facebookLogOut() {
-        try {
-            LoginManager.getInstance().logOut();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /*
-      Method for Social Login API call
-      Request parameters - firstname, lastname, email, tokenid
-      Successful response - customerid
-    */
-    private void handleFacebookAccessToken(final AccessToken token) {
-        Log.d("hi", "handleFacebookAccessToken:" + token);
-
-        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
-        auth.signInWithCredential(credential)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d("hi", "signInWithCredential:success");
-                            FirebaseUser user = auth.getCurrentUser();
-                            fetchDataFromFb(token);
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.w("hi", "signInWithCredential:failure", task.getException());
-                            Toast.makeText(RegisterActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                            fetchDataFromFb(null);
-                        }
-
-                        // ...
-                    }
-                });
-    }
-
-    private void makeApiCallForFacebookLogin(final String firstName, final String lastName, String email, String tokenId) {
-        FirebaseUser user = auth.getCurrentUser();
-        String userId = tokenId;
-        UserModel userModel = new UserModel(firstName, lastName, email, userId + "fb", 10000, 0, 0, 10000, new ArrayList());
-        createNewUser(userModel);
-    }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         //Result code received from Facebook
-        if (requestCode == RC_SIGN_IN) {
+        if (requestCode == AuthManager.RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-            handleSignInResult(result);
+            authManager.handleGoogleSigninResult(result);
         } else {
             if (resultCode == RESULT_OK) {
                 if (requestCode == CallbackManagerImpl.RequestCodeOffset.Login.toRequestCode()) {
@@ -277,47 +159,8 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
         }
 
     }
-    private void firebaseAuthWithGoogle() {
-        Log.d("Google sign in", "firebaseAuthWithGoogle:" + acct.getId());
 
-        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-        auth.signInWithCredential(credential)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d("google sign in", "signInWithCredential:success");
-                            FirebaseUser user = auth.getCurrentUser();
-                            String firstName = acct.getGivenName();
-                            String lastName = acct.getFamilyName();
-                            String email = acct.getEmail();
-                            String userId = acct.getId();
-                            UserModel userModel = new UserModel(firstName, lastName, email, userId, 10000, 0, 0, 10000, new ArrayList());
-                            createNewUser(userModel);
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.w("Google sign in", "signInWithCredential:failure", task.getException());
-                            Toast.makeText(RegisterActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                            createNewUser(null);
-                        }
 
-                        // ...
-                    }
-                });
-    }
-
-    private void handleSignInResult(GoogleSignInResult result) {
-        Log.d("Google sign in", "handleGoogleSigninResult:" + result.isSuccess());
-        if (result.isSuccess()) {
-            // Signed in successfully, show authenticated UI.
-            acct = result.getSignInAccount();
-            firebaseAuthWithGoogle();
-        } else {
-            // Signed out, show unauthenticated UI.
-        }
-    }
     /*
     Method to initialise views
    */
@@ -356,7 +199,7 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                     if (password.length() >= 6) {
                         if (CommonUtils.isConnectingToInternet(RegisterActivity.this)) {
                             //register api call
-                            makeApiCall(firstName, lastName, email, password, tokenId);
+                            authManager.createUserWithEmailAndPassword(firstName, lastName, email, password, tokenId);
                         } else {
                             Toast.makeText(this, getResources().getString(R.string.check_internet_connection),
                                     Toast.LENGTH_SHORT).show();
@@ -378,20 +221,9 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
         return !TextUtils.isEmpty(target) && android.util.Patterns.EMAIL_ADDRESS.matcher(target).matches();
     }
 
-
-    /*
-      Method to add fragment
-    */
-    /*private void addFragment() {
-        fragmentManager = getSupportFragmentManager();
-        fragmentTransaction = fragmentManager.beginTransaction();
-        GoogleSignInFragment googleSignInFragment = new GoogleSignInFragment();
-        fragmentTransaction.add(R.id.fragment_holder, googleSignInFragment, "GoogleSignIn");
-        fragmentTransaction.commit();
-    }*/
     private void signIn() {
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+        startActivityForResult(signInIntent, AuthManager.RC_SIGN_IN);
     }
 
     /*
@@ -418,78 +250,6 @@ public class RegisterActivity extends FragmentActivity implements View.OnClickLi
                 validation();
                 break;
         }
-    }
-
-    /*
-     Method for Register API call.
-     Request parameters - firstname, lastname, email, password and tokenid.
-     Successful Response - customerid
-   */
-    private void makeApiCall(final String firstName, final String lastName, final String email, String password, String tokenId) {
-        auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(RegisterActivity.this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        Toast.makeText(RegisterActivity.this, "createUserWithEmail:onComplete:" + task.isSuccessful(), Toast.LENGTH_SHORT).show();
-                        if (!task.isSuccessful()) {
-                            Toast.makeText(RegisterActivity.this, "Authentication failed." + task.getException(),
-                                    Toast.LENGTH_SHORT).show();
-                        } else {
-                            FirebaseUser user = auth.getCurrentUser();
-                            String userId = user.getUid();
-                            UserModel userModel = new UserModel(firstName, lastName, email, userId, 10000, 0, 0, 10000, new ArrayList());
-                            createNewUser(userModel);
-                        }
-                    }
-                });
-    }
-
-    private void createNewUser(UserModel userModel) {
-        final FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference ref = database.getReference();
-        DatabaseReference usersRef = ref.child("users");
-        usersRef.child(AeSimpleSHA1.SHA1(userModel.getEmail())).setValue(userModel);
-        SharedPreferenceManager.getInstance(RegisterActivity.this).
-                saveData(Constants.CUSTOMER_ID, userModel.getUserId());
-        SharedPreferenceManager.getInstance(RegisterActivity.this).
-                saveData(Constants.FIRST_NAME, userModel.getFirstName());
-        SharedPreferenceManager.getInstance(RegisterActivity.this).
-                saveData(Constants.LAST_NAME, userModel.getLastName());
-        SharedPreferenceManager.getInstance(RegisterActivity.this).
-                saveData(Constants.EMAIL, userModel.getEmail());
-        SharedPreferenceManager.getInstance(RegisterActivity.this).
-                saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-        pushProfileToCleverTap(userModel.getEmail(), userModel.getFirstName(), userModel.getLastName(), userModel.getCredits());
-        goToNextActivity(PasscodeActivity.class);
-    }
-    private void pushProfileToCleverTap(String email, String firstName, String lastName, float credits) {
-        CleverTapAPI cleverTap;
-        try {
-            cleverTap = CleverTapAPI.getInstance(getApplicationContext());
-            HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-            profileUpdate.put("email", email);                  // String
-            profileUpdate.put("firstName", firstName);
-            profileUpdate.put("lastName", lastName);
-            profileUpdate.put("credits", credits);
-            cleverTap.profile.push(profileUpdate);
-        } catch (CleverTapMetaDataNotFoundException e) {
-            // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
-        } catch (CleverTapPermissionsNotSatisfied e) {
-            // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
-        }
-    }
-
-    /*
-      Method to go to next activity
-    */
-    protected void goToNextActivity(Class nextActivity) {
-        Intent intent = new Intent();
-        intent.setClass(this, nextActivity);
-        Bundle bundle = new Bundle();
-        bundle.putString(Constants.KEY_PASSCODE_ACTIVITY_BUNDLE, Constants.VALUE_REGISTER_ACTIVITY);
-        intent.putExtras(bundle);
-        startActivity(intent);
-        finish();
     }
 }
 

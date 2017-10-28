@@ -1,16 +1,15 @@
 package com.example.admin.wobeassignment.activities;
 
-import android.app.AlarmManager;
 import android.app.Dialog;
 import android.app.Notification;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -27,44 +26,32 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.example.admin.wobeassignment.ApplicationLoader;
 import com.example.admin.wobeassignment.R;
 import com.example.admin.wobeassignment.adapters.TransactionAdapter;
-import com.example.admin.wobeassignment.model.DashboardModel;
-import com.example.admin.wobeassignment.model.TransactionModel;
+import com.example.admin.wobeassignment.managers.UserManager;
 import com.example.admin.wobeassignment.model.UserModel;
 import com.example.admin.wobeassignment.utilities.AeSimpleSHA1;
 import com.example.admin.wobeassignment.utilities.CommonUtils;
 import com.example.admin.wobeassignment.utilities.Constants;
 import com.example.admin.wobeassignment.utilities.FontManager;
 import com.example.admin.wobeassignment.utilities.SharedPreferenceManager;
-import com.example.admin.wobeassignment.utilities.WobeAlarm;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.gson.Gson;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DashboardActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener {
+        implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private RecyclerView recyclerView;
     private TextView tvAdded, tvSent, tvReceived;
     private TransactionAdapter adapter;
     Toolbar toolbar;
-
+    private SharedPreferences.OnSharedPreferenceChangeListener listener = null;
+    private UserManager userManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,26 +63,8 @@ public class DashboardActivity extends AppCompatActivity
         } else {
             Toast.makeText(this, getResources().getString(R.string.check_internet_connection), Toast.LENGTH_SHORT).show();
         }
-        scheduleNotification(getNotification("5 second delay"), 5000);
         initialiseNavigationDrawer();
-    }
-    private Notification getNotification(String content) {
-        Notification.Builder builder = new Notification.Builder(this);
-        System.out.println("again notification " + content);
-        builder.setContentTitle("You can send credits now");
-        builder.setContentText(content);
-        builder.setSmallIcon(R.drawable.facebook_sign_in_button);
-        return builder.build();
-    }
-    private void scheduleNotification(Notification notification, int delay) {
 
-        Intent notificationIntent = new Intent(this, WobeAlarm.class);
-        notificationIntent.putExtra(WobeAlarm.NOTIFICATION_ID, 1);
-        notificationIntent.putExtra(WobeAlarm.NOTIFICATION, notification);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        long futureInMillis = SystemClock.elapsedRealtime() + delay;
-        AlarmManager alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-        alarmManager.setRepeating(AlarmManager.RTC,  System.currentTimeMillis(), delay, pendingIntent);
     }
 
     //method to initialise the navigation drawer(hamburger menu)
@@ -128,17 +97,29 @@ public class DashboardActivity extends AppCompatActivity
             tvEmail.setText(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL));
         }
     }
-
+    public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+        TextView tvBalance = (TextView) findViewById(R.id.tvBalance);
+        tvBalance.setText(SharedPreferenceManager.
+                getInstance(DashboardActivity.this).getString(Constants.CREDITS));
+        adapter.setDataInAdapter(SharedPreferenceManager.getInstance(DashboardActivity.this).getTransactionList(Constants.TRANS_LIST));
+        recyclerView.setAdapter(adapter);
+    }
 
     private void makeApiCall(String email) {
+        userManager = new UserManager(this);
+        userManager.addSharedPreferenceListener(email);
         final FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference ref = database.getReference();
         DatabaseReference usersRef = ref.child("users");
+
+
+        adapter.setDataInAdapter(SharedPreferenceManager.getInstance(DashboardActivity.this).getTransactionList(Constants.TRANS_LIST));
+        recyclerView.setAdapter(adapter);
         usersRef.child(AeSimpleSHA1.SHA1(email)).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
 
-                TextView tvName = (TextView) findViewById(R.id.tvName);
+               /* TextView tvName = (TextView) findViewById(R.id.tvName);
                 TextView tvBalance = (TextView) findViewById(R.id.tvBalance);
                 UserModel userModel = snapshot.getValue(UserModel.class);
 
@@ -154,7 +135,7 @@ public class DashboardActivity extends AppCompatActivity
                 SharedPreferenceManager.getInstance(DashboardActivity.this).
                         saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
                 adapter.setDataInAdapter(userModel.getTransactions());
-                recyclerView.setAdapter(adapter);
+                recyclerView.setAdapter(adapter);*/
             }
 
             @Override
@@ -286,6 +267,8 @@ public class DashboardActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.registerOnSharedPreferenceChangeListener(this);
         if (CommonUtils.isConnectingToInternet(DashboardActivity.this)) {
             makeApiCall(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL));
         } else {
@@ -293,6 +276,16 @@ public class DashboardActivity extends AppCompatActivity
         }
     }
 
+    protected void onPause () {
+        super.onPause();
+       /* SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.unregisterOnSharedPreferenceChangeListener(listener);*/
+    }
+    protected void onStop () {
+        super.onStop();
+       /* SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.unregisterOnSharedPreferenceChangeListener(listener);*/
+    }
     /*
        When activity is the foreground, brought back from background, Passcode screen is shown again.
        This can be achieved through this lifecycle method of the activity

@@ -3,6 +3,14 @@ package com.example.admin.wobeassignment.utilities;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.example.admin.wobeassignment.model.TransactionModel;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by Admin on 19-09-2017.
  */
@@ -56,6 +64,14 @@ public class SharedPreferenceManager {
     public void saveData(String key, long data) {
         mPreference.edit().putLong(key, data).apply();
     }
+    public void saveTransactionList(String key, List data) {
+        Gson gson = new Gson();
+
+        String json = gson.toJson(data);
+
+        editor.putString(key, json);
+        editor.commit();
+    }
 
     public void saveData(String key, boolean data) {
         mPreference.edit().putBoolean(key, data).apply();
@@ -71,6 +87,14 @@ public class SharedPreferenceManager {
 
     public long getLong(String key) {
         return mPreference.getLong(key, 0);
+    }
+    public List getTransactionList(String key) {
+
+        Gson gson = new Gson();
+        String json = mPreference.getString(key, null);
+        Type type = new TypeToken<ArrayList<TransactionModel>>() {}.getType();
+        ArrayList<TransactionModel> arrayList = gson.fromJson(json, type);
+        return arrayList;
     }
 
     public boolean getBoolean(String key) {

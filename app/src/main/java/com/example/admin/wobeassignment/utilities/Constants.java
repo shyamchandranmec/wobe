@@ -13,6 +13,7 @@ public class Constants {
     public static final String CUSTOMER_ID = "customerId";
     public static final String CREDITS = "credits";
     public static final String LAST_TRANS_TIME = "lastTransactionTime";
+    public static final String TRANS_LIST = "transactionList";
     public static final String PASSCODE = "passcode";
 
 

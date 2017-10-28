@@ -1,11 +1,9 @@
 package com.example.admin.wobeassignment.managers;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -13,9 +11,7 @@ import com.clevertap.android.sdk.CleverTapAPI;
 import com.clevertap.android.sdk.exceptions.CleverTapMetaDataNotFoundException;
 import com.clevertap.android.sdk.exceptions.CleverTapPermissionsNotSatisfied;
 import com.example.admin.wobeassignment.R;
-import com.example.admin.wobeassignment.activities.LoginActivity;
 import com.example.admin.wobeassignment.activities.PasscodeActivity;
-import com.example.admin.wobeassignment.activities.RegisterActivity;
 import com.example.admin.wobeassignment.model.UserModel;
 import com.example.admin.wobeassignment.utilities.AeSimpleSHA1;
 import com.example.admin.wobeassignment.utilities.CommonUtils;
@@ -27,7 +23,6 @@ import com.facebook.GraphResponse;
 import com.facebook.login.LoginManager;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
@@ -84,13 +79,12 @@ public class AuthManager {
                             // Sign in success, update UI with the signed-in user's information
                             Log.d("google sign in", "signInWithCredential:success");
                             FirebaseUser user = auth.getCurrentUser();
-                            SharedPreferenceManager.getInstance(context).saveData(Constants.EMAIL, user.getEmail());
                             String firstName = acct.getGivenName();
                             String lastName = acct.getFamilyName();
                             String email = acct.getEmail();
                             String userId = acct.getId();
                             UserModel newUserModel = new UserModel(firstName, lastName, email, userId, 10000, 0, 0, 10000, new ArrayList());
-                            getUserDetails(user.getEmail(), newUserModel);
+                            getExistingUserOrCreateNewUser(user.getEmail(), newUserModel);
                         } else {
                             // If sign in fails, display a message to the user.
                             Log.w("Google sign in", "signInWithCredential:failure", task.getException());
@@ -103,7 +97,7 @@ public class AuthManager {
                 });
     }
 
-    public void getUserDetails (String email, final UserModel newUserModel) {
+    public void getExistingUserOrCreateNewUser(String email, final UserModel newUserModel) {
         final FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference ref = database.getReference();
         DatabaseReference usersRef = ref.child("users");
@@ -140,6 +134,25 @@ public class AuthManager {
         });
     }
 
+    public void createUserWithEmailAndPassword(final String firstName, final String lastName, final String email, String password, String tokenId) {
+        auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(context, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Toast.makeText(context, "createUserWithEmail:onComplete:" + task.isSuccessful(), Toast.LENGTH_SHORT).show();
+                        if (!task.isSuccessful()) {
+                            Toast.makeText(context, "Authentication failed." + task.getException(),
+                                    Toast.LENGTH_SHORT).show();
+                        } else {
+                            FirebaseUser user = auth.getCurrentUser();
+                            String userId = user.getUid();
+                            UserModel userModel = new UserModel(firstName, lastName, email, userId, 10000, 0, 0, 10000, new ArrayList());
+                            createNewUser(userModel);
+                        }
+                    }
+                });
+    }
+
     private void updateSharedPreference(UserModel userModel) {
         SharedPreferenceManager.getInstance(context).
                 saveData(Constants.CUSTOMER_ID, userModel.getUserId());
@@ -151,6 +164,9 @@ public class AuthManager {
                 saveData(Constants.EMAIL, userModel.getEmail());
         SharedPreferenceManager.getInstance(context).
                 saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
+        SharedPreferenceManager.getInstance(context).
+                saveTransactionList(Constants.TRANS_LIST, userModel.getTransactions());
+
         pushProfileToCleverTap(userModel.getEmail(), userModel.getFirstName(), userModel.getLastName(), userModel.getCredits());
     }
 
@@ -175,7 +191,7 @@ public class AuthManager {
         FirebaseUser user = auth.getCurrentUser();
         String userId = tokenId;
         UserModel newUserModel = new UserModel(firstName, lastName, email, userId , 10000, 0, 0, 10000, new ArrayList());
-        getUserDetails(email, newUserModel);
+        getExistingUserOrCreateNewUser(email, newUserModel);
     }
 
     public void makeApiCallForLogin(final String email, String password) {
@@ -192,7 +208,7 @@ public class AuthManager {
                         } else {
                             firebaseUser = auth.getCurrentUser();
                             String uid = firebaseUser.getUid();
-                            getUserDetails(firebaseUser.getEmail(), null);
+                            getExistingUserOrCreateNewUser(firebaseUser.getEmail(), null);
                         }
                     }
                 });
@@ -232,13 +248,6 @@ public class AuthManager {
                                     }
                                 }
 
-                                             /*
-                                              Firstname and Lastname saved in Shared Preference
-                                             */
-                                SharedPreferenceManager.getInstance(context).
-                                        saveData(Constants.USERNAME, name);
-                                SharedPreferenceManager.getInstance(context).
-                                        saveData(Constants.EMAIL, email);
                                 if (facebookId != null && !facebookId.isEmpty() && name != null
                                         && !name.isEmpty() && email != null && !email.isEmpty()) {
                                                  /*

@@ -113,6 +113,8 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
                         saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
                 tvBalance.setText(getResources().getString(R.string.balance) + SharedPreferenceManager.
                         getInstance(SendCreditsActivity.this).getString(Constants.CREDITS));
+                SharedPreferenceManager.getInstance(SendCreditsActivity.this).
+                        saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
                 try {
                     cleverTap = CleverTapAPI.getInstance(getApplicationContext());
                     HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
@@ -225,7 +227,6 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
                                     getString(R.string.invalid_user),
                             Toast.LENGTH_SHORT).show();
                 }
-
             }
 
             @Override
