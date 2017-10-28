@@ -1,7 +1,9 @@
 package com.example.admin.wobeassignment.activities;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -10,6 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.admin.wobeassignment.R;
+import com.example.admin.wobeassignment.utilities.CommonUtils;
 import com.example.admin.wobeassignment.utilities.Constants;
 import com.example.admin.wobeassignment.utilities.SharedPreferenceManager;
 

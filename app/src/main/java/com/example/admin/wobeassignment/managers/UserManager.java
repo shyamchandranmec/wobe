@@ -24,10 +24,17 @@ import java.util.HashMap;
 
 public class UserManager {
     Activity context;
+    CleverTapAPI cleverTap;
 
     public UserManager (Activity context) {
         this.context = context;
-
+        try {
+            cleverTap = CleverTapAPI.getInstance(context);
+        } catch (CleverTapMetaDataNotFoundException e) {
+            e.printStackTrace();
+        } catch (CleverTapPermissionsNotSatisfied cleverTapPermissionsNotSatisfied) {
+            cleverTapPermissionsNotSatisfied.printStackTrace();
+        }
     }
     public void addSharedPreferenceListener(String email) {
         final FirebaseDatabase database = FirebaseDatabase.getInstance();
@@ -47,7 +54,27 @@ public class UserManager {
         });
     }
 
-    private void updateSharedPreference(UserModel userModel) {
+    public void creditsSent() {
+            cleverTap.event.push("Sent Credits");
+    }
+
+    public void loggedIn() {
+        cleverTap.event.push("Logged in");
+    }
+
+    public void loggedOut() {
+        cleverTap.event.push("Logged out");
+    }
+
+    public void newUserRegistered() {
+        cleverTap.event.push("Registered");
+    }
+
+    public void addCustomEvent (String event) {
+        cleverTap.event.push(event);
+    }
+
+    public void updateSharedPreference(UserModel userModel) {
         SharedPreferenceManager.getInstance(context).
                 saveData(Constants.CUSTOMER_ID, userModel.getUserId());
         SharedPreferenceManager.getInstance(context).
@@ -59,19 +86,27 @@ public class UserManager {
         SharedPreferenceManager.getInstance(context).
                 saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
         SharedPreferenceManager.getInstance(context).
+                saveData(Constants.ADDED, Float.toString(userModel.getAdded()));
+        SharedPreferenceManager.getInstance(context).
+                saveData(Constants.SENT, Float.toString(userModel.getSent()));
+        SharedPreferenceManager.getInstance(context).
+                saveData(Constants.RECEIVED, Float.toString(userModel.getReceived()));
+        SharedPreferenceManager.getInstance(context).
                 saveTransactionList(Constants.TRANS_LIST, userModel.getTransactions());
-        pushProfileToCleverTap(userModel.getEmail(), userModel.getFirstName(), userModel.getLastName(), userModel.getCredits());
+        pushProfileToCleverTap(userModel);
     }
 
-    private void pushProfileToCleverTap(String email, String firstName, String lastName, float credits) {
+    private void pushProfileToCleverTap(UserModel userModel) {
         CleverTapAPI cleverTap;
         try {
             cleverTap = CleverTapAPI.getInstance(context.getApplicationContext());
             HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-            profileUpdate.put("email", email);                  // String
-            profileUpdate.put("firstName", firstName);
-            profileUpdate.put("lastName", lastName);
-            profileUpdate.put("credits", credits);
+            profileUpdate.put("Email", userModel.getEmail());
+            profileUpdate.put("firstName", userModel.getFirstName());
+            profileUpdate.put("lastName", userModel.getLastName());
+            profileUpdate.put("Name", userModel.getFirstName());
+            profileUpdate.put("Identity", userModel.getUserId());
+            profileUpdate.put("credits", userModel.getCredits());
             cleverTap.profile.push(profileUpdate);
         } catch (CleverTapMetaDataNotFoundException e) {
             // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml

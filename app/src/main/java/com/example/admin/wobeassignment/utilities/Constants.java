@@ -11,6 +11,9 @@ public class Constants {
     public static final String LAST_NAME = "lastname";
     public static final String EMAIL = "email";
     public static final String CUSTOMER_ID = "customerId";
+    public static final String ADDED = "added";
+    public static final String SENT = "sent";
+    public static final String RECEIVED = "received";
     public static final String CREDITS = "credits";
     public static final String LAST_TRANS_TIME = "lastTransactionTime";
     public static final String TRANS_LIST = "transactionList";

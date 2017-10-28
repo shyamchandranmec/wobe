@@ -53,9 +53,11 @@ public class AuthManager {
     private FirebaseAuth auth;
     private Activity context;
     private FirebaseUser firebaseUser;
+    private UserManager userManager;
     public AuthManager(Activity context) {
         this.auth = FirebaseAuth.getInstance();
         this.context = context;
+        userManager = new UserManager(context);
     }
 
     public void handleGoogleSigninResult(GoogleSignInResult result) {
@@ -106,7 +108,8 @@ public class AuthManager {
             public void onDataChange(DataSnapshot snapshot) {
                 if (snapshot.hasChild("email")) {
                     UserModel userModel = snapshot.getValue(UserModel.class);
-                    updateSharedPreference(userModel);
+                    userManager.updateSharedPreference(userModel);
+                    userManager.loggedIn();
                     goToNextActivity(PasscodeActivity.class);
                 } else {
                     /**
@@ -151,40 +154,6 @@ public class AuthManager {
                         }
                     }
                 });
-    }
-
-    private void updateSharedPreference(UserModel userModel) {
-        SharedPreferenceManager.getInstance(context).
-                saveData(Constants.CUSTOMER_ID, userModel.getUserId());
-        SharedPreferenceManager.getInstance(context).
-                saveData(Constants.FIRST_NAME, userModel.getFirstName());
-        SharedPreferenceManager.getInstance(context).
-                saveData(Constants.LAST_NAME, userModel.getLastName());
-        SharedPreferenceManager.getInstance(context).
-                saveData(Constants.EMAIL, userModel.getEmail());
-        SharedPreferenceManager.getInstance(context).
-                saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-        SharedPreferenceManager.getInstance(context).
-                saveTransactionList(Constants.TRANS_LIST, userModel.getTransactions());
-
-        pushProfileToCleverTap(userModel.getEmail(), userModel.getFirstName(), userModel.getLastName(), userModel.getCredits());
-    }
-
-    private void pushProfileToCleverTap(String email, String firstName, String lastName, float credits) {
-        CleverTapAPI cleverTap;
-        try {
-            cleverTap = CleverTapAPI.getInstance(context.getApplicationContext());
-            HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-            profileUpdate.put("email", email);                  // String
-            profileUpdate.put("firstName", firstName);
-            profileUpdate.put("lastName", lastName);
-            profileUpdate.put("credits", credits);
-            cleverTap.profile.push(profileUpdate);
-        } catch (CleverTapMetaDataNotFoundException e) {
-            // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
-        } catch (CleverTapPermissionsNotSatisfied e) {
-            // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
-        }
     }
 
     private void makeApiCallForFacebookLogin(final String firstName, final String lastName, String email, String tokenId) {
@@ -280,6 +249,7 @@ public class AuthManager {
     public void facebookLogOut() {
         try {
             LoginManager.getInstance().logOut();
+            userManager.loggedOut();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -313,7 +283,8 @@ public class AuthManager {
         DatabaseReference ref = database.getReference();
         DatabaseReference usersRef = ref.child("users");
         usersRef.child(AeSimpleSHA1.SHA1(userModel.getEmail())).setValue(userModel);
-        updateSharedPreference(userModel);
+        userManager.updateSharedPreference(userModel);
+        userManager.newUserRegistered();
         goToNextActivity(PasscodeActivity.class);
     }
     protected void goToNextActivity(Class nextActivity) {

@@ -52,33 +52,33 @@ public class DashboardActivity extends AppCompatActivity
     Toolbar toolbar;
     private SharedPreferences.OnSharedPreferenceChangeListener listener = null;
     private UserManager userManager;
+    NavigationView navigationView;
+    DrawerLayout drawer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        initialiseViews();
         if (CommonUtils.isConnectingToInternet(DashboardActivity.this)) {
             makeApiCall(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL));
         } else {
             Toast.makeText(this, getResources().getString(R.string.check_internet_connection), Toast.LENGTH_SHORT).show();
         }
+        initialiseViews();
         initialiseNavigationDrawer();
-
+        updateView();
     }
 
     //method to initialise the navigation drawer(hamburger menu)
     private void initialiseNavigationDrawer() {
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open,
                 R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
         setEmailAndNameInNavHeader(navigationView, drawer);
     }
 
@@ -98,11 +98,22 @@ public class DashboardActivity extends AppCompatActivity
         }
     }
     public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+       updateView();
+    }
+    private void updateView () {
+        TextView tvName = (TextView) findViewById(R.id.tvName);
+        tvName.setText(SharedPreferenceManager.getInstance(DashboardActivity.this).getString(Constants.FIRST_NAME));
         TextView tvBalance = (TextView) findViewById(R.id.tvBalance);
-        tvBalance.setText(SharedPreferenceManager.
-                getInstance(DashboardActivity.this).getString(Constants.CREDITS));
-        adapter.setDataInAdapter(SharedPreferenceManager.getInstance(DashboardActivity.this).getTransactionList(Constants.TRANS_LIST));
-        recyclerView.setAdapter(adapter);
+        setEmailAndNameInNavHeader(navigationView, drawer);
+        tvAdded.setText(SharedPreferenceManager.getInstance(DashboardActivity.this).getString(Constants.ADDED));
+        tvSent.setText(SharedPreferenceManager.getInstance(DashboardActivity.this).getString(Constants.SENT));
+        tvReceived.setText(SharedPreferenceManager.getInstance(DashboardActivity.this).getString(Constants.RECEIVED));
+        tvBalance.setText(SharedPreferenceManager.getInstance(DashboardActivity.this).getString(Constants.CREDITS));
+        if(SharedPreferenceManager.getInstance(DashboardActivity.this).getTransactionList(Constants.TRANS_LIST) != null) {
+            adapter.setDataInAdapter(SharedPreferenceManager.getInstance(DashboardActivity.this).getTransactionList(Constants.TRANS_LIST));
+            recyclerView.setAdapter(adapter);
+        }
+
     }
 
     private void makeApiCall(String email) {
@@ -111,31 +122,13 @@ public class DashboardActivity extends AppCompatActivity
         final FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference ref = database.getReference();
         DatabaseReference usersRef = ref.child("users");
-
-
-        adapter.setDataInAdapter(SharedPreferenceManager.getInstance(DashboardActivity.this).getTransactionList(Constants.TRANS_LIST));
-        recyclerView.setAdapter(adapter);
-        usersRef.child(AeSimpleSHA1.SHA1(email)).addValueEventListener(new ValueEventListener() {
+        usersRef.child(AeSimpleSHA1.SHA1(email)).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
-
-               /* TextView tvName = (TextView) findViewById(R.id.tvName);
-                TextView tvBalance = (TextView) findViewById(R.id.tvBalance);
-                UserModel userModel = snapshot.getValue(UserModel.class);
-
-                tvName.setText(userModel.getFirstName().trim());
-                SharedPreferenceManager.getInstance(DashboardActivity.this).
-                        saveData(Constants.FIRST_NAME, userModel.getFirstName());
-                SharedPreferenceManager.getInstance(DashboardActivity.this).
-                        saveData(Constants.LAST_NAME, userModel.getLastName());
-                tvBalance.setText(getResources().getString(R.string.balance) + userModel.getCredits());
-                tvAdded.setText(Float.toString(userModel.getAdded()));
-                tvSent.setText(Float.toString(userModel.getSent()));
-                tvReceived.setText(Float.toString(userModel.getReceived()));
-                SharedPreferenceManager.getInstance(DashboardActivity.this).
-                        saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-                adapter.setDataInAdapter(userModel.getTransactions());
-                recyclerView.setAdapter(adapter);*/
+                if (snapshot.hasChild("email")) {
+                    UserModel userModel = snapshot.getValue(UserModel.class);
+                    userManager.updateSharedPreference(userModel);
+                }
             }
 
             @Override
@@ -219,6 +212,7 @@ public class DashboardActivity extends AppCompatActivity
         yes.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                userManager.loggedOut();
                 SharedPreferenceManager.getInstance(getApplicationContext()).clearData();
                 FirebaseAuth.getInstance().signOut();
                 finish();
@@ -274,6 +268,7 @@ public class DashboardActivity extends AppCompatActivity
         } else {
             Toast.makeText(this, getResources().getString(R.string.check_internet_connection), Toast.LENGTH_SHORT).show();
         }
+        userManager.addCustomEvent("Visited Dashboard Activity");
     }
 
     protected void onPause () {

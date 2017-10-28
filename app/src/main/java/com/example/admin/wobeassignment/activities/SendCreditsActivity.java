@@ -3,10 +3,12 @@ package com.example.admin.wobeassignment.activities;
 import android.app.Dialog;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.TextInputEditText;
 import android.support.v4.app.NotificationCompat;
@@ -21,14 +23,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.clevertap.android.sdk.CleverTapAPI;
-import com.clevertap.android.sdk.exceptions.CleverTapMetaDataNotFoundException;
-import com.clevertap.android.sdk.exceptions.CleverTapPermissionsNotSatisfied;
-import com.example.admin.wobeassignment.ApplicationLoader;
 import com.example.admin.wobeassignment.R;
+import com.example.admin.wobeassignment.managers.UserManager;
 import com.example.admin.wobeassignment.model.BaseModel;
 import com.example.admin.wobeassignment.model.TransactionModel;
 import com.example.admin.wobeassignment.model.UserModel;
@@ -65,7 +61,7 @@ import java.util.Map;
  * Created by Admin on 21-09-2017.
  */
 
-public class SendCreditsActivity extends AppCompatActivity implements View.OnClickListener {
+public class SendCreditsActivity extends AppCompatActivity implements View.OnClickListener, SharedPreferences.OnSharedPreferenceChangeListener{
     private EditText etCredits, etDescription, etEmail;
     private Button btnSendCredits, tvVerify;
     private String toCustomerId, fromCustomerId, toFirstName, toLastName, fromFirstName, fromLastName;
@@ -73,6 +69,7 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
     private UserModel toUserModel, fromUserModel;
     private FirebaseAuth auth;
     private FirebaseUser firebaseUser;
+    private UserManager userManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,12 +78,26 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         initialiseToolbar();
         initialiseViews();
         fromCustomerId = SharedPreferenceManager.getInstance(this).getString(Constants.CUSTOMER_ID);
-
+        userManager = new UserManager(this);
+        userManager.addSharedPreferenceListener(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL));
+        updateView();
     }
 
-    /*
-      Method to initialise views
-    */
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+        updateView();
+    }
+
+    private  void updateView() {
+        if (SharedPreferenceManager.getInstance(SendCreditsActivity.this).getString(Constants.FIRST_NAME) != null) {
+            tvName.setText(SharedPreferenceManager.getInstance(SendCreditsActivity.this).getString(Constants.FIRST_NAME));
+        }
+
+        if (SharedPreferenceManager.getInstance(SendCreditsActivity.this).getString(Constants.CREDITS) != null) {
+            tvBalance.setText(getResources().getString(R.string.balance) + SharedPreferenceManager.
+                    getInstance(SendCreditsActivity.this).getString(Constants.CREDITS));
+        }
+    }
     private void initialiseViews() {
         etEmail = (EditText) findViewById(R.id.etEmail);
         tvVerify = (Button) findViewById(R.id.tvVerify);
@@ -97,49 +108,6 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         btnSendCredits.setOnClickListener(this);
         tvName = (TextView) findViewById(R.id.tvName);
         tvBalance = (TextView) findViewById(R.id.tvBalance);
-        final FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference ref = database.getReference();
-        final DatabaseReference usersRef = ref.child("users");
-        auth = FirebaseAuth.getInstance();
-        firebaseUser = auth.getCurrentUser();
-        String email = firebaseUser.getEmail();
-        String emailHash = AeSimpleSHA1.SHA1(email);
-        usersRef.child(AeSimpleSHA1.SHA1(SharedPreferenceManager.getInstance(this).getString(Constants.EMAIL))).addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                CleverTapAPI cleverTap;
-                UserModel userModel = snapshot.getValue(UserModel.class);
-                SharedPreferenceManager.getInstance(SendCreditsActivity.this).
-                        saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-                tvBalance.setText(getResources().getString(R.string.balance) + SharedPreferenceManager.
-                        getInstance(SendCreditsActivity.this).getString(Constants.CREDITS));
-                SharedPreferenceManager.getInstance(SendCreditsActivity.this).
-                        saveData(Constants.CREDITS, Float.toString(userModel.getCredits()));
-                try {
-                    cleverTap = CleverTapAPI.getInstance(getApplicationContext());
-                    HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-                    profileUpdate.put("credits", userModel.getCredits());
-                    cleverTap.profile.push(profileUpdate);
-                } catch (CleverTapMetaDataNotFoundException e) {
-                    // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
-                } catch (CleverTapPermissionsNotSatisfied e) {
-                    // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-                System.out.println("error");
-            }
-        });
-        if (SharedPreferenceManager.getInstance(SendCreditsActivity.this).getString(Constants.FIRST_NAME) != null) {
-            tvName.setText(SharedPreferenceManager.getInstance(SendCreditsActivity.this).getString(Constants.FIRST_NAME));
-        }
-
-        if (SharedPreferenceManager.getInstance(SendCreditsActivity.this).getString(Constants.CREDITS) != null) {
-            tvBalance.setText(getResources().getString(R.string.balance) + SharedPreferenceManager.
-                    getInstance(SendCreditsActivity.this).getString(Constants.CREDITS));
-        }
     }
 
     /*
@@ -295,6 +263,14 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
 
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.registerOnSharedPreferenceChangeListener(this);
+        userManager.addCustomEvent("Visited Send Credits Activity");
+    }
+
 
     /*
        Method to make Send Credits API call.
@@ -356,25 +332,14 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         usersRef.updateChildren(update).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                CleverTapAPI cleverTap;
                 if (task.isSuccessful()) {
-                    try {
-                        cleverTap = CleverTapAPI.getInstance(getApplicationContext());
-                        HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
-                        cleverTap.event.push("Sent Credits");
-                    } catch (CleverTapMetaDataNotFoundException e) {
-                        // thrown if you haven't specified your CleverTap Account ID or Token in your AndroidManifest.xml
-                    } catch (CleverTapPermissionsNotSatisfied e) {
-                        // thrown if you haven’t requested the required permissions in your AndroidManifest.xml
-                    }
+                    userManager.creditsSent();
                     showSuccessDialog();
                 } else {
                     btnSendCredits.setEnabled(true);
                 }
-
             }
         });
-
     }
 
     /*
@@ -403,4 +368,5 @@ public class SendCreditsActivity extends AppCompatActivity implements View.OnCli
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         dialog.show();
     }
+
 }
